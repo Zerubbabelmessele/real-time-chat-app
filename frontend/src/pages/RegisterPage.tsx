@@ -1,156 +1,120 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import Footer from "../components/layout/Footer";
+import { registerUser } from "../api/auth";
 import Navbar from "../components/layout/Navbar";
+import Footer from "../components/layout/Footer";
 import "../styles/auth.css";
-
-const registerSchema = z
-  .object({
-    username: z
-      .string()
-      .min(3, "Username must be at least 3 characters"),
-
-    email: z
-      .string()
-      .email("Please enter a valid email"),
-
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Must contain an uppercase letter")
-      .regex(/[a-z]/, "Must contain a lowercase letter")
-      .regex(/[0-9]/, "Must contain a number"),
-
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
-  const password = watch("password", "");
+  const [error, setError] = useState("");
 
-  const getPasswordStrength = () => {
-    let score = 0;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
+    // FRONTEND VALIDATION
+    if (!form.username || !form.email || !form.password || !form.confirmPassword) {
+      setError("All fields are required");
+      return;
+    }
 
-    return score;
-  };
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
 
-  const onSubmit = (data: RegisterFormData) => {
-    console.log(data);
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
-    // Later:
-    // await registerUser(data);
+    try {
+      setError("");
 
-    navigate("/chat");
+      await registerUser({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+      });
+
+      navigate("/login");
+    } catch (err: any) {
+      const message = err.response?.data?.message;
+
+      if (message === "Email already exists") {
+        setError("This email is already registered");
+      } else {
+        setError(message || "Registration failed");
+      }
+    }
   };
 
   return (
     <>
       <Navbar />
+
       <div className="auth-page">
         <div className="auth-card">
           <h1>Create Account</h1>
 
-          <p className="auth-subtitle">
-            Join NexChat and start chatting instantly.
-          </p>
-
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit}>
             <input
               type="text"
               placeholder="Username"
-              {...register("username")}
+              value={form.username}
+              onChange={(e) =>
+                setForm({ ...form, username: e.target.value })
+              }
             />
-            {errors.username && (
-              <p className="error">
-                {errors.username.message}
-              </p>
-            )}
 
             <input
               type="email"
               placeholder="Email"
-              {...register("email")}
+              value={form.email}
+              onChange={(e) =>
+                setForm({ ...form, email: e.target.value })
+              }
             />
-            {errors.email && (
-              <p className="error">
-                {errors.email.message}
-              </p>
-            )}
 
             <input
               type="password"
               placeholder="Password"
-              {...register("password")}
+              value={form.password}
+              onChange={(e) =>
+                setForm({ ...form, password: e.target.value })
+              }
             />
-
-            <div className="strength-bar">
-              <div
-                className="strength-fill"
-                style={{
-                  width: `${getPasswordStrength() * 25}%`,
-                }}
-              />
-            </div>
-
-            {errors.password && (
-              <p className="error">
-                {errors.password.message}
-              </p>
-            )}
 
             <input
               type="password"
               placeholder="Confirm Password"
-              {...register("confirmPassword")}
+              value={form.confirmPassword}
+              onChange={(e) =>
+                setForm({ ...form, confirmPassword: e.target.value })
+              }
             />
 
-            {errors.confirmPassword && (
-              <p className="error">
-                {errors.confirmPassword.message}
-              </p>
-            )}
+            {error && <p className="error-text">{error}</p>}
 
-            <button
-              type="submit"
-              className="submit-btn"
-            >
+            <button type="submit" className="submit-btn">
               Create Account
             </button>
           </form>
 
-          <div className="auth-switch">
-            Already have an account?
-            <button
-              className="link-btn"
-              onClick={() => navigate("/login")}
-            >
-              Sign In
-            </button>
-          </div>
+          <p
+            onClick={() => navigate("/login")}
+            style={{ cursor: "pointer", color: "#6366f1" }}
+          >
+            Already have an account? Sign in
+          </p>
         </div>
       </div>
 

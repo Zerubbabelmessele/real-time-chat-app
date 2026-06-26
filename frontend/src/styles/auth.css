@@ -92,3 +92,8 @@
   background: #4ade80;
   transition: 0.3s;
 }
+.error-text {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+}
